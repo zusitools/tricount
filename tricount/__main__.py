@@ -9,23 +9,39 @@ import os.path
 from lxml import etree
 import zusicommon
 
-# absolute path => ([#triangles in subset 1, #triangles in subset 2], [linked file 1, linked file 2, ...])
-ls3s = {}
+class Ls3File:
+    def __init__(self):
+        # Full name of the file.
+        self.filename = ""
 
-# total number of triangles (including linked files) per file
-tricounts = {}
+        # Total number of triangles (including linked files)
+        self.tricount = 0
+
+        # Subset triangle count
+        self.subset_counts = []
+
+        # Set of subset indices which are animated
+        self.subset_animations = set()
+
+        # List of linked files
+        self.linked_files = []
+
+        # Set of linked file indices which are animated
+        self.linked_animations = set()
+
+# absolute path => Ls3File object
+ls3files = {}
 
 # files whose count has already been printed
 printed = set()
 
 # Parses a LS3 file and counts the triangles in it
 def parseLs3(filePath):
-    if filePath in ls3s:
+    if filePath in ls3files:
         return
-    tricounts[filePath] = 0
-
-    # The number of triangles in this file and all included files
-    triSum = 0
+    ls3file = Ls3File()
+    ls3file.filename = filePath
+    ls3files[filePath] = ls3file
 
     # Parse the file
     try:
@@ -35,53 +51,43 @@ def parseLs3(filePath):
         print("Error opening file %s. Error message: %s" % (filePath, e.strerror))
         return
 
-    tricount = 0
-    subset_counts = []
-    included_files = []
-    ls3s[filePath] = (subset_counts, included_files)
-
     # Get triangle count of subsets embedded in the file
     for subsetno, subset in enumerate(xml.xpath("//SubSet[@MeshI > 0]")):
         # MeshI contains the number of mesh indices, i.e. 3 * the number of triangles
         subset_count = int(subset.get("MeshI")) / 3
-        subset_counts.append(subset_count)
-        tricount += subset_count
+        ls3file.subset_counts.append(subset_count)
+        ls3file.tricount += subset_count
 
-    # Call the function recursively for all included files that do not have the "NurInfo" attribute set
-    for includedFileNode in xml.xpath("//Verknuepfte/Datei[@Dateiname != '' and (not(@NurInfo) or @NurInfo != '1')]"):
-        includedFilePath = zusicommon.resolve_file_path(includedFileNode.get("Dateiname"),
+    # Call the function recursively for all linked files that do not have the "NurInfo" attribute set
+    for linkedFileNode in xml.xpath("//Verknuepfte/Datei[@Dateiname != '' and (not(@NurInfo) or @NurInfo != '1')]"):
+        linkedFilePath = zusicommon.resolve_file_path(linkedFileNode.get("Dateiname"),
             os.path.dirname(filePath), zusicommon.get_zusi_data_path())
 
         # Only count .ls3 files
-        if not includedFilePath.lower().endswith(".ls3"):
+        if not linkedFilePath.lower().endswith(".ls3"):
             continue
-        elif not os.path.exists(includedFilePath):
-            print("File not found: %s" % includedFilePath)
+        elif not os.path.exists(linkedFilePath):
+            print("File not found: %s" % linkedFilePath)
         else:
-            included_files.append(includedFilePath)
-            parseLs3(includedFilePath)
-            tricount += tricounts[includedFilePath]
+            parseLs3(linkedFilePath)
+            ls3file.linked_files.append(ls3files[linkedFilePath])
+            ls3file.tricount += ls3files[linkedFilePath].tricount
 
-    tricounts[filePath] = tricount
+def printLs3(ls3file, indent = 0):
+    print("| " * indent + "+ " + ls3file.filename + ": " + str(ls3file.tricount))
 
-def printLs3(filePath, indent = 0):
-    print("| " * indent + "+ " + filePath + ": " + str(tricounts[filePath]))
-
-    if filePath in printed:
+    if ls3file in printed:
         return
-    printed.add(filePath)
+    printed.add(ls3file)
 
-    if filePath not in ls3s:
-        return
-
-    for index, subset_count in enumerate(ls3s[filePath][0]):
+    for index, subset_count in enumerate(ls3file.subset_counts):
         print("| " * (indent+1) + "- %" + str(index) + ": " + str(subset_count))
-    for linked_file in ls3s[filePath][1]:
+    for linked_file in ls3file.linked_files:
         printLs3(linked_file, indent + 1)
 
 if __name__ == "__main__":
     filepath = os.path.realpath(sys.argv[1])
     parseLs3(filepath)
 
-    if filepath in ls3s:
-        printLs3(filepath)
+    if filepath in ls3files:
+        printLs3(ls3files[filepath])
