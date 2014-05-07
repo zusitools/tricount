@@ -73,17 +73,29 @@ def parseLs3(filePath):
             ls3file.linked_files.append(ls3files[linkedFilePath])
             ls3file.tricount += ls3files[linkedFilePath].tricount
 
-def printLs3(ls3file, indent = 0):
-    print("| " * indent + "+ " + ls3file.filename + ": " + str(ls3file.tricount))
+    # Set animation indices
+    for verknAnimationNode in xml.xpath("//VerknAnimation"):
+        idx = verknAnimationNode.get("AniIndex")
+        idx = 0 if idx is None else int(idx)
+        ls3file.linked_animations.add(idx)
+    for meshAnimationNode in xml.xpath("//MeshAnimation"):
+        idx = meshAnimationNode.get("AniIndex")
+        idx = 0 if idx is None else int(idx)
+        ls3file.subset_animations.add(idx)
+
+def printLs3(ls3file, indent = 0, is_ani = False):
+    print("| " * indent + "+ " + ls3file.filename + ": " + str(ls3file.tricount)
+        + (" (Ani)" if is_ani else ""))
 
     if ls3file in printed:
         return
     printed.add(ls3file)
 
     for index, subset_count in enumerate(ls3file.subset_counts):
-        print("| " * (indent+1) + "- %" + str(index) + ": " + str(subset_count))
-    for linked_file in ls3file.linked_files:
-        printLs3(linked_file, indent + 1)
+        print("| " * (indent+1) + "- %" + str(index) + ": " + str(subset_count)
+            + (" (Ani)" if index in ls3file.subset_animations else ""))
+    for index, linked_file in enumerate(ls3file.linked_files):
+        printLs3(linked_file, indent + 1, index in ls3file.linked_animations)
 
 if __name__ == "__main__":
     filepath = os.path.realpath(sys.argv[1])
