@@ -52,9 +52,13 @@ def parseLs3(filePath):
         return
 
     # Get triangle count of subsets embedded in the file
-    for subsetno, subset in enumerate(xml.xpath("//SubSet[@MeshI > 0]")):
+    for subset in xml.xpath("//SubSet"):
         # MeshI contains the number of mesh indices, i.e. 3 * the number of triangles
-        subset_count = int(subset.get("MeshI")) / 3
+        subset_count = len(subset.xpath("Face"))
+        meshi = subset.get("MeshI")
+        if meshi is not None:
+            subset_count += int(meshi) / 3
+
         ls3file.subset_counts.append(subset_count)
         ls3file.tricount += subset_count
 
