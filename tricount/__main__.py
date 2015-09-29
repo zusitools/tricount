@@ -20,6 +20,9 @@ class Ls3File:
         # Subset triangle count
         self.subset_counts = []
 
+        # Subset names
+        self.subset_names = []
+
         # Set of subset indices which are animated
         self.subset_animations = set()
 
@@ -61,6 +64,7 @@ def parseLs3(filePath):
 
         ls3file.subset_counts.append(subset_count)
         ls3file.tricount += subset_count
+        ls3file.subset_names.append(subset.get("Name"))
 
     # Call the function recursively for all linked files that do not have the "NurInfo" attribute set
     for linkedFileNode in xml.xpath("//Verknuepfte/Datei[@Dateiname != '' and (not(@NurInfo) or @NurInfo != '1')]"):
@@ -96,7 +100,10 @@ def printLs3(ls3file, indent = 0, is_ani = False):
     printed.add(ls3file)
 
     for index, subset_count in enumerate(ls3file.subset_counts):
-        print("| " * (indent+1) + "- %" + str(index) + ": " + str(subset_count)
+        subset_name = ls3file.subset_names[index]
+        print("| " * (indent+1) + "- %" + str(index)
+            + (" (" + subset_name + ")" if subset_name is not None else "")
+            + ": " + str(subset_count)
             + (" (Ani)" if index in ls3file.subset_animations else ""))
     for index, linked_file in enumerate(ls3file.linked_files):
         printLs3(linked_file, indent + 1, index in ls3file.linked_animations)
