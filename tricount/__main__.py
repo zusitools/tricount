@@ -96,6 +96,7 @@ def parseLs3(filePath):
 def printLs3(ls3file, indent = 0, is_ani = False):
     filename = ls3file.filename[len(datapath):] if ls3file.filename.startswith(datapath) else ls3file.filename
     print("| " * indent + "+ " + filename + ": " + str(ls3file.tricount)
+        + ((" [" + str(sum(ls3file.subset_counts)) + "]") if len(ls3file.linked_files) else "")
         + (" (Ani)" if is_ani else ""))
 
     if ls3file in printed:
