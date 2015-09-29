@@ -38,6 +38,8 @@ ls3files = {}
 # files whose count has already been printed
 printed = set()
 
+datapath = zusicommon.get_zusi_data_path()
+
 # Parses a LS3 file and counts the triangles in it
 def parseLs3(filePath):
     if filePath in ls3files:
@@ -69,7 +71,7 @@ def parseLs3(filePath):
     # Call the function recursively for all linked files that do not have the "NurInfo" attribute set
     for linkedFileNode in xml.xpath("//Verknuepfte/Datei[@Dateiname != '' and (not(@NurInfo) or @NurInfo != '1')]"):
         linkedFilePath = zusicommon.resolve_file_path(linkedFileNode.get("Dateiname"),
-            os.path.dirname(filePath), zusicommon.get_zusi_data_path())
+            os.path.dirname(filePath), datapath)
 
         # Only count .ls3 files
         if not linkedFilePath.lower().endswith(".ls3"):
@@ -92,7 +94,8 @@ def parseLs3(filePath):
         ls3file.subset_animations.add(idx)
 
 def printLs3(ls3file, indent = 0, is_ani = False):
-    print("| " * indent + "+ " + ls3file.filename + ": " + str(ls3file.tricount)
+    filename = ls3file.filename[len(datapath):] if ls3file.filename.startswith(datapath) else ls3file.filename
+    print("| " * indent + "+ " + filename + ": " + str(ls3file.tricount)
         + (" (Ani)" if is_ani else ""))
 
     if ls3file in printed:
